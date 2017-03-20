@@ -23,8 +23,7 @@ public class IndexController {
 
         modelAndView.setViewName("index");
         modelAndView.addObject("pusher_app_if", PusherConstants.PUSHER_APP_ID);
-        modelAndView.addObject("pusher_key", PusherConstants.PUSHER_KEY);
-        modelAndView.addObject("pusher_secret", PusherConstants.PUSHER_SECRET);
+        modelAndView.addObject("pusher_channel", PusherConstants.CHANNEL_NAME);
 
         if (!model.containsAttribute(GeneralConstants.ID_SESSION_SHOPPING_CART)) {
             model.addAttribute(GeneralConstants.ID_SESSION_SHOPPING_CART);
