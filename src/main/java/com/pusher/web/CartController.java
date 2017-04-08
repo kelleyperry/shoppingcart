@@ -1,16 +1,26 @@
 package com.pusher.web;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Stream;
+
+import javax.annotation.PostConstruct;
+
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.SessionAttribute;
+import org.springframework.web.bind.annotation.SessionAttributes;
+
 import com.pusher.constants.GeneralConstants;
 import com.pusher.constants.PusherConstants;
 import com.pusher.model.Product;
 import com.pusher.rest.Pusher;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.SessionAttributes;
-
-import javax.annotation.PostConstruct;
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
+import com.pusher.web.vo.ItemRequest;
 
 /**
  * Created by kelleyperry on 3/19/17.
@@ -25,9 +35,9 @@ public class CartController {
 
         @PostConstruct
         public void configure() {
-            pusher = new Pusher(
+            pusher = new Pusher (
                     PusherConstants.PUSHER_APP_ID,
-                    PusherConstants.PUSHER_KEY,
+                    PusherConstants.PUSHER_APP_KEY,
                     PusherConstants.PUSHER_SECRET
             );
 
@@ -55,5 +65,87 @@ public class CartController {
             product.setPrice(new BigDecimal("89.99"));
             products.add(product);
 
+        }
+
+        @RequestMapping(value = "/products",
+            method = RequestMethod.GET,
+            produces = "application/json")
+        public List<Product> getProducts() {
+            return products;
+        }
+
+        @RequestMapping(value = "/cart/items",
+        method = RequestMethod.GET,
+        produces = "application/json")
+            public List<Product> getCartItems(@SessionAttribute(GeneralConstants.ID_SESSION_SHOPPING_CART) List<Product> shoppingCart) {
+                return shoppingCart;
+        }
+
+        @RequestMapping(value = "/cart/item",
+            method = RequestMethod.GET,
+            consumes = "application/json")
+        public String addItem(@RequestBody ItemRequest request, @SessionAttribute(GeneralConstants.ID_SESSION_SHOPPING_CART) List<Product> shoppingCart) {
+            Product newProduct = new Product();
+            Optional<Product> optional = getProductById(products.stream(), request.getId());
+
+            if(optional.isPresent()) {
+                Product product = optional.get();
+
+                newProduct.setId(product.getId());
+                newProduct.setName(product.getName());
+                newProduct.setPrice(product.getPrice());
+                newProduct.setQuantity(request.getQuantity());
+
+                Optional<Product> productInCart = getProductById(shoppingCart.stream(), product.getId());
+                String event;
+
+                if(productInCart.isPresent()) {
+                    productInCart.get().setQuantity(request.getQuantity());
+                    event = "itemUpdated";
+                } else {
+                    shoppingCart.add(newProduct);
+                    event = "itemAdded";
+                }
+
+                pusher.trigger(PusherConstants.CHANNEL_NAME, event, newProduct);
+            }
+
+            return "OK";
+        }
+
+        @RequestMapping(value = "/cart/item",
+            method = RequestMethod.DELETE,
+            consumes = "application/json")
+        public String deleteItem(@RequestBody ItemRequest request, @SessionAttribute(GeneralConstants.ID_SESSION_SHOPPING_CART) List<Product> shoppingCart) {
+            Optional<Product> optional = getProductById(products.stream(), request.getId());
+
+            if(optional.isPresent()) {
+                Product product = optional.get();
+
+                Optional<Product> productInCart = getProductById(shoppingCart.stream(), product.getId());
+
+                if(productInCart.isPresent()) {
+                    shoppingCart.remove(productInCart.get());
+                    pusher.trigger(PusherConstants.CHANNEL_NAME, "itemRemoved", product);
+                }
+            }
+
+            return "OK";
+        }
+
+        @RequestMapping(value = "/cart",
+            method = RequestMethod.DELETE)
+        public String emptyCart(Model model) {
+            model.addAttribute(GeneralConstants.ID_SESSION_SHOPPING_CART, new ArrayList<Product>());
+            pusher.trigger(PusherConstants.CHANNEL_NAME, "cartEmptied", "");
+
+            return "OK";
+        }
+
+
+        private Optional<Product> getProductById(Stream<Product> stream, Long id) {
+            return stream
+                    .filter(product -> product.getId().equals(id))
+                    .findFirst();
         }
     }

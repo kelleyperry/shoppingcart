@@ -12,7 +12,7 @@ public class Product implements Serializable {
      * UID for serialization
      */
 
-    private static final long serialVersionUId = 6705527563808382509L;
+    private static final long serialVersionUID = 6705527563808382509L;
 
     /** id of the product **/
     private Long id;
@@ -26,35 +26,43 @@ public class Product implements Serializable {
     /** Quantity of the product that will be added to the shopping cart */
     private Integer quantity;
 
-    public long getId() {
+    public Long getId() {
+
         return id;
     }
 
     public void setId(Long id) {
+
         this.id = id;
     }
 
     public String getName() {
+
         return name;
     }
 
     public void setName(String name) {
+
         this.name = name;
     }
 
     public BigDecimal getPrice() {
+
         return price;
     }
 
     public void setPrice(BigDecimal price) {
+
         this.price = price;
     }
 
     public Integer getQuantity() {
+
         return quantity;
     }
 
     public void setQuantity(Integer quantity) {
+
         this.quantity = quantity;
     }
 
